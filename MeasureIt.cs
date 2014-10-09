@@ -1648,8 +1648,7 @@ static class MeasureIt
 
         timer1000.Measure("dictionary[type] (5 items)", () =>
         {
-            object o = dictionary[typeof(int)]();
-            o = dictionary[typeof(int)]();
+            object o = dictionary[typeof(int)]();            
             o = dictionary[typeof(long)]();
             o = dictionary[typeof(float)]();
             o = dictionary[typeof(decimal)]();
