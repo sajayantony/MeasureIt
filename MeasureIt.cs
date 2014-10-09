@@ -183,8 +183,8 @@ static class MeasureIt
         logger.CaptureCurrentMachineInfo(Assembly.GetExecutingAssembly(), skipMachineStats);
 
         string reportFileName = Path.Combine(Environment.GetEnvironmentVariable("TEMP"), "MeasureIt.html");
-        RunAtHighPerfPolicy(delegate 
-        { 
+        RunAtHighPerfPolicy(delegate
+        {
             Stats methodCallStats = RunTests(areas);
             logger.Scale = methodCallStats.Median;
             logger.UnitsDescription = "Scaled where EmptyStaticFunction = 1.0 (" +
@@ -208,10 +208,10 @@ static class MeasureIt
         timer1.OnMeasure += logger.AddWithCount;
 
         timer100 = new MultiSampleCodeTimer(10, 100);
-        timer100.OnMeasure += logger.AddWithCount; 
+        timer100.OnMeasure += logger.AddWithCount;
 
         timer10 = new MultiSampleCodeTimer(10, 10);
-        timer10.OnMeasure += logger.AddWithCount; 
+        timer10.OnMeasure += logger.AddWithCount;
 
         // Just to show you the amount of measurement error you get (since it should be 0)
         timer1000.Measure("NOTHING", 1, delegate
@@ -608,19 +608,19 @@ static class MeasureIt
                 }
             });
 
-            timer1000.Measure("aIntPtr[i] = 1", 10, delegate
-            {
-                aIntPtr[0] = aInt;
-                aIntPtr[1] = aInt;
-                aIntPtr[2] = aInt;
-                aIntPtr[3] = aInt;
-                aIntPtr[4] = aInt;
-                aIntPtr[5] = aInt;
-                aIntPtr[6] = aInt;
-                aIntPtr[7] = aInt;
-                aIntPtr[8] = aInt;
-                aIntPtr[9] = aInt;
-            });
+            //timer1000.Measure("aIntPtr[i] = 1", 10, delegate
+            //{
+            //    aIntPtr[0] = aInt;
+            //    aIntPtr[1] = aInt;
+            //    aIntPtr[2] = aInt;
+            //    aIntPtr[3] = aInt;
+            //    aIntPtr[4] = aInt;
+            //    aIntPtr[5] = aInt;
+            //    aIntPtr[6] = aInt;
+            //    aIntPtr[7] = aInt;
+            //    aIntPtr[8] = aInt;
+            //    aIntPtr[9] = aInt;
+            //});
 
             timer1000.Measure("string[i] = aString", 10, delegate
             {
@@ -682,7 +682,7 @@ static class MeasureIt
     }
     static public void MeasureDelegates()
     {
-        Predicate<int> action = delegate(int i) { return i > 0; };
+        Predicate<int> action = delegate (int i) { return i > 0; };
         IAsyncResult result = action.BeginInvoke(3, null, null);
         bool resultValue = action.EndInvoke(result);
 
@@ -990,7 +990,7 @@ static class MeasureIt
         });
         timer1000.Measure("Foreach method over ValueType[] (100 elems)", 1, delegate
         {
-            ValueType.Foreach(vArr, delegate(ref ValueType v)
+            ValueType.Foreach(vArr, delegate (ref ValueType v)
             {
                 iResult = v.x;
             });
@@ -1637,8 +1637,45 @@ static class MeasureIt
         });
     }
 
-    #region private
-    private static Guid origPowerPolicy;
+    static public void MeasureDictionaryFactory()
+    {
+        Dictionary<Type, Func<object>> dictionary = new Dictionary<Type, Func<object>>();
+        dictionary.Add(typeof(int), () => default(int));
+        dictionary.Add(typeof(long), () => default(long));
+        dictionary.Add(typeof(float), () => default(float));
+        dictionary.Add(typeof(decimal), () => default(decimal));
+        dictionary.Add(typeof(string), () => default(string));
+
+        timer1000.Measure("dictionary[type] (5 items)", () =>
+        {
+            object o = dictionary[typeof(int)]();
+            o = dictionary[typeof(int)]();
+            o = dictionary[typeof(long)]();
+            o = dictionary[typeof(float)]();
+            o = dictionary[typeof(decimal)]();
+            o = dictionary[typeof(string)]();
+        });
+    }
+
+    public static void MeasureGenericFactory()
+    {
+        ServiceProvider.Add(() => default(int));        
+        ServiceProvider.Add(() => default(long));
+        ServiceProvider.Add(() => default(float));
+        ServiceProvider.Add(() => default(decimal));
+        ServiceProvider.Add(() => default(string));
+
+        timer1000.Measure("GenericLookup<T> (5 items)", () => {
+            object o = ServiceProvider.GetInstance<int>();
+            o = ServiceProvider.GetInstance<long>();
+            o = ServiceProvider.GetInstance<float>();
+            o = ServiceProvider.GetInstance<decimal>();
+            o = ServiceProvider.GetInstance<string>();
+        });
+    }
+
+#region private
+private static Guid origPowerPolicy;
     private static void SetHighPerfPowerPolicy()
     {
         Guid curPolicy = PowerManagment.CurrentPolicy;
@@ -2038,6 +2075,26 @@ public class Misc
                 sum += i;
         return sum;
     }
+}
+
+public class ServiceProvider
+{
+    static class ServiceContainer<T>
+    {
+        // This field is not singleton, by design we have one of these per T
+        public static Func<T> FactoryCallback { get; set; }
+    }
+
+    public static T GetInstance<T>()
+    {
+        return ServiceContainer<T>.FactoryCallback();
+    }
+
+    public static void Add<T>(Func<T> factory)
+    {
+        ServiceContainer<T>.FactoryCallback = factory;
+    }
+
 }
 
 #endregion
